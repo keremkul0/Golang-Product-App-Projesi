@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/labstack/gommon/log"
 )

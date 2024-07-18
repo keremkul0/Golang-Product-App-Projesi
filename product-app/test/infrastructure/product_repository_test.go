@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"Deneme/common/postgresql"
+	"Deneme/domain"
 	"Deneme/persistence"
 	"context"
 	"os"
@@ -41,11 +42,147 @@ func clear(ctx context.Context, dbPool *pgxpool.Pool) {
 	TruncateTestData(ctx, dbPool)
 }
 
-func TestAllProducts(t *testing.T) {
+func TestGetAllProducts(t *testing.T) {
 	setup(ctx, dbPool)
+
+	expectedProducts := []domain.Product{
+		{
+			Id:       1,
+			Name:     "AirFryer",
+			Price:    3000.0,
+			Discount: 22.0,
+			Store:    "ABC TECH",
+		},
+		{
+			Id:       2,
+			Name:     "Ütü",
+			Price:    1500.0,
+			Discount: 10.0,
+			Store:    "ABC TECH",
+		},
+		{
+			Id:       3,
+			Name:     "Çamaşır Makinesi",
+			Price:    10000.0,
+			Discount: 15.0,
+			Store:    "ABC TECH",
+		},
+		{
+			Id:       4,
+			Name:     "Lambader",
+			Price:    2000.0,
+			Discount: 0.0,
+			Store:    "Dekorasyon Sarayı",
+		},
+	}
 	t.Run("GetAllProducts", func(t *testing.T) {
 		actualProducts := productRepository.GetAllProducts()
 		assert.Equal(t, 4, len(actualProducts))
+		assert.Equal(t, expectedProducts, actualProducts)
+	})
+
+	clear(ctx, dbPool)
+}
+
+func TestGetAllProductsByStore(t *testing.T) {
+	setup(ctx, dbPool)
+
+	expectedProducts := []domain.Product{
+		{
+			Id:       1,
+			Name:     "AirFryer",
+			Price:    3000.0,
+			Discount: 22.0,
+			Store:    "ABC TECH",
+		},
+		{
+			Id:       2,
+			Name:     "Ütü",
+			Price:    1500.0,
+			Discount: 10.0,
+			Store:    "ABC TECH",
+		},
+		{
+			Id:       3,
+			Name:     "Çamaşır Makinesi",
+			Price:    10000.0,
+			Discount: 15.0,
+			Store:    "ABC TECH",
+		},
+	}
+	t.Run("GetAllProductsByStore", func(t *testing.T) {
+		actualProducts := productRepository.GetAllProductsByStore("ABC TECH")
+		assert.Equal(t, 3, len(actualProducts))
+		assert.Equal(t, expectedProducts, actualProducts)
+	})
+
+	clear(ctx, dbPool)
+}
+
+func TestAddProduct(t *testing.T) {
+
+	expectedProducts := []domain.Product{
+		{
+			Id:       1,
+			Name:     "Kupa",
+			Price:    100.0,
+			Discount: 0.0,
+			Store:    "Kırtasiye Merkezi",
+		},
+	}
+
+	newProduct := domain.Product{
+		Name:     "Kupa",
+		Price:    100,
+		Discount: 0.0,
+		Store:    "Kırtasiye Merkezi",
+	}
+
+	t.Run("AddProduct", func(t *testing.T) {
+		productRepository.AddProduct(newProduct)
+		actualProducts := productRepository.GetAllProducts()
+		assert.Equal(t, 1, len(actualProducts))
+		assert.Equal(t, expectedProducts, actualProducts)
+	})
+
+	clear(ctx, dbPool)
+}
+
+func TestGetById(t *testing.T) {
+	setup(ctx, dbPool)
+	t.Run("GetById", func(t *testing.T) {
+		actualProduct, _ := productRepository.GetById(1)
+		_, err := productRepository.GetById(5)
+		assert.Equal(t, domain.Product{
+			Id:       1,
+			Name:     "AirFryer",
+			Price:    3000.0,
+			Discount: 22.0,
+			Store:    "ABC TECH",
+		}, actualProduct)
+		assert.Equal(t, "Product not found with id 5", err.Error())
 	})
 	clear(ctx, dbPool)
 }
+
+func TestDeleteById(t *testing.T) {
+	setup(ctx, dbPool)
+	t.Run("DeleteById", func(t *testing.T) {
+		productRepository.DeleteById(1)
+		_,err:=productRepository.GetById(1)
+		assert.Equal(t,"Product not found with id 1",err.Error())
+	})
+	clear(ctx, dbPool)
+}
+
+
+func TestUpdatePrice(t *testing.T) {
+	setup(ctx, dbPool)
+	t.Run("DeleteById", func(t *testing.T) {
+		productRepository.DeleteById(1)
+		_,err:=productRepository.GetById(1)
+		assert.Equal(t,"Product not found with id 1",err.Error())
+	})
+	clear(ctx, dbPool)
+}
+
