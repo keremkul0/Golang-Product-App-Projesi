@@ -18,7 +18,7 @@ type IProductRepository interface {
 	AddProduct(product domain.Product) error
 	GetById(productId int64) (domain.Product, error)
 	DeleteById(productId int64) error
-	UpdatePrice(productId int32, newPrice float64) error
+	UpdatePrice(productId int64, newPrice float32) error
 }
 
 type ProductRepository struct {
@@ -26,7 +26,6 @@ type ProductRepository struct {
 }
 
 func NewProductRepository(dbPool *pgxpool.Pool) IProductRepository {
-
 	return &ProductRepository{
 		dbPool: dbPool,
 	}
@@ -34,13 +33,12 @@ func NewProductRepository(dbPool *pgxpool.Pool) IProductRepository {
 
 func (productRepository *ProductRepository) GetAllProducts() []domain.Product {
 	ctx := context.Background()
-	productRows, err := productRepository.dbPool.Query(ctx, "select * from products")
+	productRows, err := productRepository.dbPool.Query(ctx, "Select * from products")
 
 	if err != nil {
 		log.Error("Error while getting all products %v", err)
 		return []domain.Product{}
 	}
-
 	return extractProductsFromRows(productRows)
 }
 
@@ -59,7 +57,6 @@ func (productRepository *ProductRepository) GetAllProductsByStore(storeName stri
 }
 
 func (productRepository *ProductRepository) AddProduct(product domain.Product) error {
-
 	ctx := context.Background()
 
 	insert_sql := `Insert into products (name,price,discount,store) VALUES ($1,$2,$3,$4)`
@@ -70,12 +67,31 @@ func (productRepository *ProductRepository) AddProduct(product domain.Product) e
 		log.Error("Failed to add new product", err)
 		return err
 	}
-	log.Info(fmt.Printf("product added with %v", addNewProduct))
+	log.Info(fmt.Printf("Product added with %v", addNewProduct))
 	return nil
 }
 
-func (productRepository *ProductRepository) GetById(productId int64) (domain.Product, error) {
+func extractProductsFromRows(productRows pgx.Rows) []domain.Product {
+	var products = []domain.Product{}
+	var id int64
+	var name string
+	var price float32
+	var discount float32
+	var store string
 
+	for productRows.Next() {
+		productRows.Scan(&id, &name, &price, &discount, &store)
+		products = append(products, domain.Product{
+			Id:       id,
+			Name:     name,
+			Price:    price,
+			Discount: discount,
+			Store:    store,
+		})
+	}
+	return products
+}
+func (productRepository *ProductRepository) GetById(productId int64) (domain.Product, error) {
 	ctx := context.Background()
 
 	getByIdSql := `Select * from products where id = $1`
@@ -105,9 +121,7 @@ func (productRepository *ProductRepository) GetById(productId int64) (domain.Pro
 		Store:    store,
 	}, nil
 }
-
 func (productRepository *ProductRepository) DeleteById(productId int64) error {
-
 	ctx := context.Background()
 
 	_, getErr := productRepository.GetById(productId)
@@ -116,53 +130,26 @@ func (productRepository *ProductRepository) DeleteById(productId int64) error {
 		return errors.New("Product not found")
 	}
 
-	deleteSql := `Delete from products where id=$1`
+	deleteSql := `Delete from products where id = $1`
 
 	_, err := productRepository.dbPool.Exec(ctx, deleteSql, productId)
-
 	if err != nil {
 		return errors.New(fmt.Sprintf("Error while deleting product with id %d", productId))
 	}
-
 	log.Info("Product deleted")
 	return nil
 }
 
-func (productRepository *ProductRepository) UpdatePrice(productId int32, newPrice float64) error {
-
+func (productRepository *ProductRepository) UpdatePrice(productId int64, newPrice float32) error {
 	ctx := context.Background()
 
-	updatePriceSql := `update products set price=$1 where id=$2`
+	updateSql := `Update products set price = $1 where id = $2`
 
-	_, err := productRepository.dbPool.Exec(ctx, updatePriceSql, newPrice, productId)
+	_, err := productRepository.dbPool.Exec(ctx, updateSql, newPrice, productId)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error while updateing product with id=%d", productId))
+		return errors.New(fmt.Sprintf("Error while updating product with id : %d", productId))
 	}
-	log.Info("Product %d price update with new price %v", productId, newPrice)
+	log.Info("Product %d price updated with new price %v", productId, newPrice)
 	return nil
-}
-
-func extractProductsFromRows(productRows pgx.Rows) []domain.Product {
-
-	var products = []domain.Product{}
-	var id int64
-	var name string
-	var price float32
-	var discount float32
-	var store string
-
-	for productRows.Next() {
-		productRows.Scan(&id, &name, &price, &discount, &store)
-		products = append(products, domain.Product{
-			Id:       id,
-			Name:     name,
-			Price:    price,
-			Discount: discount,
-			Store:    store,
-		})
-	}
-
-	return products
-
 }
